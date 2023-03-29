@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# 显示该数据集中的数据类别，出现的可能值，特殊值以及缺失值的占比
 def show_data(data):
     pd.set_option('display.max_columns', None)
     data_types = data.dtypes
@@ -14,6 +15,15 @@ def show_data(data):
     result.columns = ['Data Type', 'Possible Values',
                       'Unique Values','Missing Values(%)']
     return result
+
+# 对个别列的数据类型进行转换，object->float
+def convert_column_to_float(data,column_names):
+    for column_name in column_names:
+        try:
+            data[column_name] = data[column_name].astype(float)
+        except ValueError:
+            data[column_name] = data[column_name].str.replace(",", "")
+            data[column_name] = pd.to_numeric(data[column_name], errors = 'coerce')
 
 # 打印各列数据出现频数
 def plot_value_counts(data):
@@ -74,7 +84,7 @@ def fill_by_frenquent(data):
     for column in data.columns:
         mode_value = data[column].mode()[0]
         data[column] = data[column].fillna(mode_value)
-    print(data)
+    #print(data)
     return data
 
 #利用相关度来填充缺失值
@@ -131,7 +141,59 @@ def fill_by_similarity(data, column):
         data.loc[data[column].isnull(), column] = data.loc[data[column].isnull(), most_similar_index]
 
     return data
+## 对movies数据集的操作
+movies = pd.read_csv('D:\上课资料\数据挖掘\第四周数据集\movies.csv',index_col=0)
+movies = movies.reset_index(drop=True)
+movies = movies.drop('storyline', axis=1)
+print(movies.columns)  # 展示数据集中类别
 
+print('数据集尺寸为：',movies.shape)  # 打印数据集尺寸
+
+# 对数据类型进行转换，这里某些列数据不正常，比如float变成了object类型
+column_names = ['downloads','run_time','views']
+convert_column_to_float(movies,column_names)
+# 打印数据集中各列各数据出现频数
+plot_value_counts(movies)
+
+# 打印数据集中数据结构
+print(show_data(movies))
+#打印指定列的5数概括，包括缺失值个数
+print(summarize_numerical_attribute(movies,'IMDb-rating'),'\n')
+print(summarize_numerical_attribute(movies,'downloads'),'\n')
+print(summarize_numerical_attribute(movies,'run_time'),'\n')
+print(summarize_numerical_attribute(movies,'views'),'\n')
+
+# IMDb-rating:评分，'appropriate_for'：合适人群，'downloads'：下载量，'industry'：厂商，'language'：语言，
+#'run_time'：时长，'views'：播放量，'writer'：导演。
+# his_count是用来画直方图的数据，box_count是用来画盒图的数据
+his_count = movies[['IMDb-rating', 'appropriate_for', 'downloads',
+                        'industry', 'language', 'run_time', 'views', 'writer']]
+box_count = movies[['IMDb-rating', 'downloads', 'run_time', 'views']]
+# 画直方图
+histogram(movies,his_count)
+# 画盒图
+boxplot(movies,box_count)
+#直接剔除有缺失值的行
+drop_missing_movies = drop_missing_rows(movies)
+print(summarize_numerical_attribute(drop_missing_movies,'IMDb-rating'),'\n')
+
+#将数据集分成数值型和字符串类型两类
+num_column_names = ['IMDb-rating', 'downloads','run_time', 'views']
+num_data = movies.loc[:,num_column_names]
+#print(num_column)
+#用出现频率最高的数据填充缺失值
+fill = fill_by_frenquent(movies)
+print(summarize_numerical_attribute(fill,'IMDb-rating'),'\n')
+
+#利用数据相关性来填充缺失值
+corr = fill_by_corr(num_data,'IMDb-rating')
+print(summarize_numerical_attribute(corr,'IMDb-rating'),'\n')
+
+#利用数据相似性来填充缺失值
+simi = fill_by_similarity(num_data,'IMDb-rating')
+print(summarize_numerical_attribute(simi,'IMDb-rating'),'\n')
+
+##对tweet数据集操作的部分
 Tweet = pd.read_csv('D:\上课资料\数据挖掘\第四周数据集\评论\删减版.csv',index_col=0)
 Tweet = Tweet.reset_index(drop=True)
 print(Tweet.columns)
@@ -150,5 +212,5 @@ print(summarize_numerical_attribute(Tweet,'VOLATILITY_30D'),'\n')
 his_box_column = Tweet[['LAST_PRICE', '1_DAY_RETURN', '2_DAY_RETURN', '3_DAY_RETURN',
                 '7_DAY_RETURN', 'PX_VOLUME', 'VOLATILITY_10D', 'VOLATILITY_30D']]
 print(his_box_column.head())
-#histogram(Tweet,his_box_column)
-#boxplot(Tweet,his_box_column)
+histogram(Tweet,his_box_column)
+boxplot(Tweet,his_box_column)
